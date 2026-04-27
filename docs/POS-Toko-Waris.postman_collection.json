@@ -1,0 +1,195 @@
+{
+  "info": {
+    "name": "POS Toko Waris API",
+    "_postman_id": "pos-toko-waris-v1",
+    "description": "Koleksi API lengkap untuk Sistem Point of Sale Toko Waris.\n\n**Cara pakai:**\n1. Jalankan request **Login** terlebih dahulu\n2. Token otomatis tersimpan di variable `{{token}}`\n3. Semua request lain sudah menggunakan token tersebut\n\n**Base URL:** `http://localhost:8000/api`",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000/api" },
+    { "key": "token",    "value": "" }
+  ],
+  "item": [
+    {
+      "name": "🔐 Auth",
+      "item": [
+        {
+          "name": "Login Pemilik",
+          "event": [{ "listen": "test", "script": { "exec": ["if (pm.response.code === 200) { pm.collectionVariables.set('token', pm.response.json().data.token); }"] } }],
+          "request": { "method": "POST", "url": "{{base_url}}/auth/login", "body": { "mode": "raw", "raw": "{\"username\":\"pemilik\",\"password\":\"password123\",\"role\":\"pemilik\"}", "options": { "raw": { "language": "json" } } }, "header": [{ "key": "Content-Type", "value": "application/json" }] }
+        },
+        {
+          "name": "Login Kasir",
+          "event": [{ "listen": "test", "script": { "exec": ["if (pm.response.code === 200) { pm.collectionVariables.set('token', pm.response.json().data.token); }"] } }],
+          "request": { "method": "POST", "url": "{{base_url}}/auth/login", "body": { "mode": "raw", "raw": "{\"username\":\"kasir1\",\"password\":\"password123\",\"role\":\"kasir\"}", "options": { "raw": { "language": "json" } } }, "header": [{ "key": "Content-Type", "value": "application/json" }] }
+        },
+        {
+          "name": "Get Profile (Me)",
+          "request": { "method": "GET", "url": "{{base_url}}/auth/me", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }] }
+        },
+        {
+          "name": "Logout",
+          "request": { "method": "POST", "url": "{{base_url}}/auth/logout", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }] }
+        }
+      ]
+    },
+    {
+      "name": "📦 Produk",
+      "item": [
+        {
+          "name": "Daftar Produk",
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}/produk?per_page=20&search=", "host": ["{{base_url}}"], "path": ["produk"], "query": [{ "key": "per_page", "value": "20" }, { "key": "search", "value": "" }] }, "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }] }
+        },
+        {
+          "name": "Cari Produk by Barcode",
+          "request": { "method": "GET", "url": "{{base_url}}/produk/barcode/8996001234001", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }] }
+        },
+        {
+          "name": "Detail Produk",
+          "request": { "method": "GET", "url": "{{base_url}}/produk/1", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }] }
+        },
+        {
+          "name": "Tambah Produk (Pemilik)",
+          "request": { "method": "POST", "url": "{{base_url}}/produk", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"kode_produk\": \"NEW-001\",\n  \"nama_produk\": \"Produk Baru\",\n  \"harga_beli\": 5000,\n  \"harga_jual\": 7000,\n  \"stok_awal\": 50,\n  \"stok_minimal\": 10,\n  \"satuan\": \"pcs\"\n}" } }
+        },
+        {
+          "name": "Update Produk (Pemilik)",
+          "request": { "method": "PUT", "url": "{{base_url}}/produk/1", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"harga_jual\": 4000,\n  \"diskon_persen\": 5\n}" } }
+        }
+      ]
+    },
+    {
+      "name": "💳 Transaksi (POS)",
+      "item": [
+        {
+          "name": "Buat Transaksi Baru",
+          "request": { "method": "POST", "url": "{{base_url}}/transaksi", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"items\": [\n    { \"produk_id\": 1, \"jumlah\": 2 },\n    { \"produk_id\": 7, \"jumlah\": 1 }\n  ],\n  \"metode_pembayaran\": \"cash\",\n  \"device_id\": \"KASIR-PC-01\"\n}" } }
+        },
+        {
+          "name": "Selesaikan Transaksi (Bayar)",
+          "request": { "method": "POST", "url": "{{base_url}}/transaksi/1/selesaikan", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"jumlah_bayar\": 10000,\n  \"metode_pembayaran\": \"cash\"\n}" } }
+        },
+        {
+          "name": "Batalkan Transaksi",
+          "request": { "method": "POST", "url": "{{base_url}}/transaksi/1/batalkan", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{ \"alasan\": \"Pelanggan batal\" }" } }
+        },
+        {
+          "name": "Hapus Item dari Transaksi",
+          "request": { "method": "DELETE", "url": "{{base_url}}/transaksi/1/item/1", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }] }
+        },
+        {
+          "name": "Data Struk",
+          "request": { "method": "GET", "url": "{{base_url}}/transaksi/1/struk", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }] }
+        },
+        {
+          "name": "Daftar Transaksi (Filter Pending)",
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}/transaksi?status=pending", "host": ["{{base_url}}"], "path": ["transaksi"], "query": [{ "key": "status", "value": "pending" }] }, "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }] }
+        }
+      ]
+    },
+    {
+      "name": "📊 Stok",
+      "item": [
+        {
+          "name": "Daftar Stok",
+          "request": { "method": "GET", "url": "{{base_url}}/stok", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }] }
+        },
+        {
+          "name": "Notifikasi Stok Minimal & Kedaluwarsa",
+          "request": { "method": "GET", "url": "{{base_url}}/stok/notifikasi", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }] }
+        },
+        {
+          "name": "Tambah Stok Manual (Pemilik)",
+          "request": { "method": "POST", "url": "{{base_url}}/stok/1/tambah", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{ \"jumlah\": 20, \"keterangan\": \"Restok dari gudang\" }" } }
+        },
+        {
+          "name": "Penyesuaian Stok Opname (Pemilik)",
+          "request": { "method": "POST", "url": "{{base_url}}/stok/1/penyesuaian", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{ \"jumlah_baru\": 100, \"keterangan\": \"Hasil stock opname\" }" } }
+        },
+        {
+          "name": "Riwayat Pergerakan Stok",
+          "request": { "method": "GET", "url": "{{base_url}}/stok/1/riwayat", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }] }
+        }
+      ]
+    },
+    {
+      "name": "🚚 Pemasok & Pembelian",
+      "item": [
+        {
+          "name": "Daftar Pemasok",
+          "request": { "method": "GET", "url": "{{base_url}}/pemasok", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }] }
+        },
+        {
+          "name": "Tambah Pemasok",
+          "request": { "method": "POST", "url": "{{base_url}}/pemasok", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"nama_pemasok\": \"PT. Baru Jaya\",\n  \"kontak_person\": \"Pak Budi\",\n  \"nomor_telepon\": \"0812-9999-0000\",\n  \"kota\": \"Bandung\"\n}" } }
+        },
+        {
+          "name": "Riwayat Pembelian Pemasok",
+          "request": { "method": "GET", "url": "{{base_url}}/pemasok/1/riwayat-pembelian", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }] }
+        },
+        {
+          "name": "Buat Purchase Order",
+          "request": { "method": "POST", "url": "{{base_url}}/pembelian", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"pemasok_id\": 1,\n  \"items\": [\n    { \"produk_id\": 1, \"jumlah\": 100, \"harga_beli\": 2800 },\n    { \"produk_id\": 7, \"jumlah\": 48,  \"harga_beli\": 2500 }\n  ],\n  \"catatan\": \"Order rutin mingguan\"\n}" } }
+        },
+        {
+          "name": "Terima Pembelian (Update Stok Otomatis)",
+          "request": { "method": "POST", "url": "{{base_url}}/pembelian/1/terima", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }] }
+        }
+      ]
+    },
+    {
+      "name": "👥 Pengguna (Pemilik)",
+      "item": [
+        {
+          "name": "Daftar Pengguna",
+          "request": { "method": "GET", "url": "{{base_url}}/users", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }] }
+        },
+        {
+          "name": "Tambah Kasir Baru",
+          "request": { "method": "POST", "url": "{{base_url}}/users", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"username\": \"kasir3\",\n  \"email\": \"kasir3@tokowaris.local\",\n  \"password\": \"kasir123\",\n  \"nama_lengkap\": \"Kasir Baru\",\n  \"role\": \"kasir\"\n}" } }
+        },
+        {
+          "name": "Reset Password User",
+          "request": { "method": "POST", "url": "{{base_url}}/users/2/reset-password", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{ \"password_baru\": \"newpassword123\" }" } }
+        }
+      ]
+    },
+    {
+      "name": "📈 Laporan (Pemilik)",
+      "item": [
+        {
+          "name": "Dashboard Hari Ini",
+          "request": { "method": "GET", "url": "{{base_url}}/laporan/dashboard", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }] }
+        },
+        {
+          "name": "Laporan Penjualan (Custom Periode)",
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}/laporan/penjualan?dari=2025-01-01&sampai=2025-01-31", "host": ["{{base_url}}"], "path": ["laporan","penjualan"], "query": [{ "key": "dari", "value": "2025-01-01" }, { "key": "sampai", "value": "2025-01-31" }] }, "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }] }
+        },
+        {
+          "name": "Laporan Mingguan",
+          "request": { "method": "GET", "url": "{{base_url}}/laporan/mingguan", "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }] }
+        },
+        {
+          "name": "Laporan Bulanan",
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}/laporan/bulanan?bulan=2025-01", "host": ["{{base_url}}"], "path": ["laporan","bulanan"], "query": [{ "key": "bulan", "value": "2025-01" }] }, "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }] }
+        },
+        {
+          "name": "Laporan Keuangan (HPP & Laba)",
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}/laporan/keuangan?dari=2025-01-01&sampai=2025-01-31", "host": ["{{base_url}}"], "path": ["laporan","keuangan"], "query": [{ "key": "dari", "value": "2025-01-01" }, { "key": "sampai", "value": "2025-01-31" }] }, "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }] }
+        },
+        {
+          "name": "Produk Terlaris",
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}/laporan/produk-terlaris?dari=2025-01-01&sampai=2025-01-31&limit=10", "host": ["{{base_url}}"], "path": ["laporan","produk-terlaris"], "query": [{ "key": "dari", "value": "2025-01-01" }, { "key": "sampai", "value": "2025-01-31" }, { "key": "limit", "value": "10" }] }, "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }] }
+        },
+        {
+          "name": "Export PDF",
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}/laporan/export/pdf?dari=2025-01-01&sampai=2025-01-31&tipe=penjualan", "host": ["{{base_url}}"], "path": ["laporan","export","pdf"], "query": [{ "key": "dari", "value": "2025-01-01" }, { "key": "sampai", "value": "2025-01-31" }, { "key": "tipe", "value": "penjualan" }] }, "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }] }
+        },
+        {
+          "name": "Export Excel",
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}/laporan/export/excel?dari=2025-01-01&sampai=2025-01-31", "host": ["{{base_url}}"], "path": ["laporan","export","excel"], "query": [{ "key": "dari", "value": "2025-01-01" }, { "key": "sampai", "value": "2025-01-31" }] }, "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }] }
+        }
+      ]
+    }
+  ]
+}
