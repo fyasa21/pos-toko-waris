@@ -63,4 +63,38 @@ class ProdukTest extends TestCase
         $this->assertNull($stok->tanggal_kedaluwarsa);
         $this->assertNull($stok->lokasi_rak);
     }
+
+        public function test_produk_ditolak_jika_harga_jual_lebih_kecil_dari_harga_beli(): void
+    {
+        $pemilik = User::create([
+            'username' => 'pemilik_validasi',
+            'email' => 'pemilik.validasi@test.com',
+            'password_hash' => Hash::make('password123'),
+            'role' => 'pemilik',
+            'nama_lengkap' => 'Test Pemilik Validasi',
+            'is_active' => true,
+        ]);
+
+        $kategori = Kategori::create(['nama_kategori' => 'Sembako']);
+        $token = $pemilik->createToken('test', ['*'])->plainTextToken;
+
+        $response = $this->withToken($token)->postJson('/api/produk', [
+            'kode_produk' => 'PRD-HARGA-001',
+            'nama_produk' => 'Produk Harga Tidak Valid',
+            'kategori_id' => $kategori->kategori_id,
+            'harga_beli' => 10000,
+            'harga_jual' => 9000,
+            'diskon_persen' => 0,
+            'satuan' => 'pcs',
+            'stok_awal' => 10,
+            'stok_minimal' => 2,
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['harga_jual']);
+
+        $this->assertDatabaseMissing('produks', [
+            'kode_produk' => 'PRD-HARGA-001',
+        ]);
+    }
 }
