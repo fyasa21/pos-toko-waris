@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\Kategori;
+use App\Models\DetailTransaksi;
 use App\Models\Produk;
 use App\Models\Stok;
+use App\Models\Transaksi;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -64,7 +66,7 @@ class ProdukTest extends TestCase
         $this->assertNull($stok->lokasi_rak);
     }
 
-        public function test_produk_ditolak_jika_harga_jual_lebih_kecil_dari_harga_beli(): void
+    public function test_produk_ditolak_jika_harga_jual_lebih_kecil_dari_harga_beli(): void
     {
         $pemilik = User::create([
             'username' => 'pemilik_validasi',
@@ -95,6 +97,65 @@ class ProdukTest extends TestCase
 
         $this->assertDatabaseMissing('produks', [
             'kode_produk' => 'PRD-HARGA-001',
+        ]);
+    }
+
+    public function test_pemilik_dapat_menonaktifkan_produk_yang_ada_di_transaksi_pending(): void
+    {
+        $pemilik = User::create([
+            'username' => 'pemilik_hapus',
+            'email' => 'pemilik.hapus@test.com',
+            'password_hash' => Hash::make('password123'),
+            'role' => 'pemilik',
+            'nama_lengkap' => 'Test Pemilik Hapus',
+            'is_active' => true,
+        ]);
+
+        $produk = Produk::create([
+            'kode_produk' => 'PRD-HAPUS-001',
+            'nama_produk' => 'Produk Bisa Dihapus',
+            'harga_beli' => 10000,
+            'harga_jual' => 12000,
+            'diskon_persen' => 0,
+            'satuan' => 'pcs',
+            'is_active' => true,
+        ]);
+
+        $transaksi = Transaksi::create([
+            'user_id' => $pemilik->user_id,
+            'nomor_transaksi' => 'TRX-PENDING-HAPUS',
+            'tanggal_transaksi' => now(),
+            'total_harga' => 12000,
+            'total_diskon' => 0,
+            'total_pajak' => 0,
+            'total_pembayaran' => 12000,
+            'jumlah_bayar' => 0,
+            'kembalian' => 0,
+            'metode_pembayaran' => 'cash',
+            'status' => 'pending',
+            'device_id' => 'TEST',
+            'is_synced' => true,
+        ]);
+
+        DetailTransaksi::create([
+            'transaksi_id' => $transaksi->transaksi_id,
+            'produk_id' => $produk->produk_id,
+            'jumlah' => 1,
+            'harga_satuan' => 12000,
+            'diskon_item' => 0,
+            'subtotal' => 12000,
+        ]);
+
+        $token = $pemilik->createToken('test', ['*'])->plainTextToken;
+
+        $response = $this->withToken($token)->deleteJson("/api/produk/{$produk->produk_id}");
+
+        $response->assertStatus(200)
+            ->assertJsonPath('success', true);
+
+        $this->assertDatabaseHas('produks', [
+            'produk_id' => $produk->produk_id,
+            'is_active' => false,
         ]);
     }
 }

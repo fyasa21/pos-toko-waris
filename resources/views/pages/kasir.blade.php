@@ -785,30 +785,25 @@ searchInput.addEventListener('keypress', async (e) => {
     searchInput.disabled = true;
     
     try {
-      // Langsung tembak API untuk mencari exact match barcode
-      const res = await api('/produk?' + new URLSearchParams({ search: val, aktif_saja: 1, per_page: 2 }));
-      const items = res?.data || [];
-      
-      if (items.length === 1) {
-        // Jika BARCODE COCOK 100% (hanya mengembalikan tepat 1 barang), langsung masukkan keranjang!
-        const p = items[0];
-        const stok = p.stok?.jumlah_stok ?? 0;
-        
+      // Lookup exact barcode agar scan tidak tertukar dengan hasil pencarian nama/kode.
+      const res = await api(`/produk/barcode/${encodeURIComponent(val)}`);
+
+      if (res?.success && res.data) {
+        const p = res.data;
+        const stok = parseInt(p.stok || 0);
+
         if (stok > 0) {
           addToCart(p.produk_id, p.nama_produk, p.harga_jual, p.diskon_persen, stok);
-          toast(`(+) ${p.nama_produk}`, 'success'); // Kasih feedback masuk cart
-          
-          // Reset kolom input agar siap scan barang berikutnya!
+          toast(`(+) ${p.nama_produk}`, 'success');
+
+          // Reset kolom input agar siap scan barang berikutnya.
           searchInput.value = '';
-          loadProduk('', katSelect.value); // Reset daftar grid kembali awal
+          loadProduk('', katSelect.value);
         } else {
           toast('Stok produk habis!', 'error');
         }
-      } else if (items.length === 0) {
-        toast('Barcode/Produk tidak ditemukan!', 'error');
       } else {
-        // Kalau lebih dari 1 (misal dia ngetik manual "Sabun"), biarkan saja
-        // karena gridnya otomatis sudah terfilter.
+        toast('Barcode/Produk tidak ditemukan!', 'error');
       }
     } catch (e) {
       toast('Terjadi kesalahan scan', 'error');

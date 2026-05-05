@@ -76,28 +76,60 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-let periodeFrom='', periodeTo='', barChart=null, pieChart=null;
+let periodeFrom='', periodeTo='', activePeriod='month', barChart=null, pieChart=null;
+
+function formatDate(d) {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getSelectedPeriod(showToast = true) {
+  if (activePeriod === 'custom') {
+    periodeFrom = document.getElementById('c-dari').value;
+    periodeTo = document.getElementById('c-sampai').value;
+  }
+
+  if (!periodeFrom || !periodeTo) {
+    if (showToast) toast('Pilih tanggal laporan terlebih dahulu.', 'warning');
+    return null;
+  }
+
+  if (periodeFrom > periodeTo) {
+    if (showToast) toast('Tanggal mulai tidak boleh melebihi tanggal akhir.', 'warning');
+    return null;
+  }
+
+  return { from: periodeFrom, to: periodeTo };
+}
 
 function setPeriod(p, btn) {
+  activePeriod = p;
   document.querySelectorAll('.chip').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  const now=new Date(), fmt=d=>d.toISOString().split('T')[0];
+  const now=new Date();
   document.getElementById('custom-range').style.display='none';
-  if (p==='today') { periodeFrom=periodeTo=fmt(now); }
-  else if (p==='week') { const s=new Date(now);s.setDate(now.getDate()-6);periodeFrom=fmt(s);periodeTo=fmt(now); }
-  else if (p==='month') { periodeFrom=fmt(new Date(now.getFullYear(),now.getMonth(),1));periodeTo=fmt(now); }
-  else { document.getElementById('custom-range').style.display='flex'; return; }
+  if (p==='today') { periodeFrom=periodeTo=formatDate(now); }
+  else if (p==='week') { const s=new Date(now);s.setDate(now.getDate()-6);periodeFrom=formatDate(s);periodeTo=formatDate(now); }
+  else if (p==='month') { periodeFrom=formatDate(new Date(now.getFullYear(),now.getMonth(),1));periodeTo=formatDate(now); }
+  else {
+    document.getElementById('custom-range').style.display='flex';
+    if (!document.getElementById('c-dari').value) document.getElementById('c-dari').value=periodeFrom;
+    if (!document.getElementById('c-sampai').value) document.getElementById('c-sampai').value=periodeTo;
+    return;
+  }
   loadLaporan();
 }
 
 async function loadLaporan() {
-  if (!periodeFrom||!periodeTo) { periodeFrom=document.getElementById('c-dari').value; periodeTo=document.getElementById('c-sampai').value; }
-  if (!periodeFrom||!periodeTo) return;
+  const periode = getSelectedPeriod();
+  if (!periode) return;
   const [keu,harian,terlaris,trx] = await Promise.all([
-    api(`/laporan/keuangan?dari=${periodeFrom}&sampai=${periodeTo}`),
-    api(`/laporan/harian?dari=${periodeFrom}&sampai=${periodeTo}`),
-    api(`/laporan/produk-terlaris?dari=${periodeFrom}&sampai=${periodeTo}&limit=10`),
-    api(`/transaksi?dari=${periodeFrom}&sampai=${periodeTo}&per_page=200`),
+    api(`/laporan/keuangan?dari=${periode.from}&sampai=${periode.to}`),
+    api(`/laporan/harian?dari=${periode.from}&sampai=${periode.to}`),
+    api(`/laporan/produk-terlaris?dari=${periode.from}&sampai=${periode.to}&limit=10`),
+    api(`/transaksi?dari=${periode.from}&sampai=${periode.to}&per_page=200`),
   ]);
   renderKPI(keu?.data||{});
   renderBar(harian?.data?.harian||[]);
@@ -206,12 +238,16 @@ async function downloadFile(url, filename, preview = false, previewWindow = null
   }
 }
 
-function exportPdf() { 
+function exportPdf() {
+  const periode = getSelectedPeriod();
+  if (!periode) return;
   const previewWindow = window.open('', '_blank');
-  downloadFile(`/api/laporan/export/pdf?dari=${periodeFrom}&sampai=${periodeTo}&tipe=penjualan`, `Laporan_Penjualan_${periodeFrom}_${periodeTo}.pdf`, true, previewWindow); 
+  downloadFile(`/api/laporan/export/pdf?dari=${periode.from}&sampai=${periode.to}&tipe=penjualan`, `Laporan_Penjualan_${periode.from}_${periode.to}.pdf`, true, previewWindow);
 }
-function exportExcel() { 
-  downloadFile(`/api/laporan/export/excel?dari=${periodeFrom}&sampai=${periodeTo}`, `Laporan_Pos_${periodeFrom}_${periodeTo}.xlsx`, false); 
+function exportExcel() {
+  const periode = getSelectedPeriod();
+  if (!periode) return;
+  downloadFile(`/api/laporan/export/excel?dari=${periode.from}&sampai=${periode.to}`, `Laporan_Pos_${periode.from}_${periode.to}.xlsx`, false);
 }
 
 // Init
