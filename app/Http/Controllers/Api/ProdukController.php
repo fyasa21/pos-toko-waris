@@ -183,15 +183,6 @@ class ProdukController extends Controller
         $produk = Produk::find($id);
         if (!$produk) return $this->notFoundResponse('Produk tidak ditemukan.');
 
-        // Cek apakah produk ada di transaksi aktif
-        $inTransaction = $produk->detailTransaksis()
-            ->whereHas('transaksi', fn($q) => $q->where('status', 'pending'))
-            ->exists();
-
-        if ($inTransaction) {
-            return $this->errorResponse('Produk tidak bisa dihapus karena ada dalam transaksi pending.');
-        }
-
         $produk->update(['is_active' => false]);
 
         ActivityLog::record($request->user()->user_id, 'hapus_produk', 'produk', "Produk dinonaktifkan: {$produk->nama_produk}");

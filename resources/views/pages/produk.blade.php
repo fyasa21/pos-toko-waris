@@ -114,6 +114,13 @@
 @push('scripts')
 <script>
 let curPage = 1;
+const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+}[char]));
 
 async function loadKat() {
   const res = await api('/kategori');
@@ -155,10 +162,10 @@ async function loadProduk(page=1) {
   tbody.innerHTML = items.map((p,i) => `<tr>
     <td style="color:var(--text-4);font-size:12px">${from+i}</td>
     <td>
-      <p style="font-weight:600;color:var(--text-1)">${p.nama_produk}</p>
-      <p style="font-size:11.5px;color:var(--text-4);font-family:'Geist Mono',monospace">${p.kode_produk}${p.barcode?' · '+p.barcode:''}</p>
+      <p style="font-weight:600;color:var(--text-1)">${escapeHtml(p.nama_produk)}</p>
+      <p style="font-size:11.5px;color:var(--text-4);font-family:'Geist Mono',monospace">${escapeHtml(p.kode_produk)}${p.barcode?' · '+escapeHtml(p.barcode):''}</p>
     </td>
-    <td><span class="badge badge-gray">${p.kategori?.nama_kategori||'—'}</span></td>
+    <td><span class="badge badge-gray">${escapeHtml(p.kategori?.nama_kategori||'—')}</span></td>
     <td style="font-family:'Geist Mono',monospace;color:var(--text-2)">${rupiah(p.harga_beli)}</td>
     <td>
       <span style="font-family:'Geist Mono',monospace;font-weight:600;color:var(--teal)">${rupiah(p.harga_jual)}</span>
@@ -168,7 +175,7 @@ async function loadProduk(page=1) {
     <td>${p.is_active?`<span class="badge badge-green">Aktif</span>`:`<span class="badge badge-gray">Nonaktif</span>`}</td>
     ${isPemilik?`<td><div style="display:flex;gap:6px">
       <button onclick="editProduk(${p.produk_id})" class="btn btn-ghost btn-sm">Edit</button>
-      <button onclick="hapusProduk(${p.produk_id},'${p.nama_produk.replace(/'/g,"\\'")}'')" class="btn btn-danger btn-sm">Hapus</button>
+      <button type="button" data-delete-produk="${p.produk_id}" data-produk-nama="${escapeHtml(p.nama_produk)}" class="btn btn-danger btn-sm">Hapus</button>
     </div></td>`:''}
   </tr>`).join('');
 
@@ -273,9 +280,11 @@ async function saveProduk() {
   }
 }
 
-async function hapusProduk(id, nama) {
-  if (!(await confirmDialog(`Nonaktifkan produk "<strong>${nama}</strong>"?`))) return;
+async function hapusProduk(id, nama, btn=null) {
+  if (!(await confirmDialog(`Nonaktifkan produk "<strong>${escapeHtml(nama)}</strong>"?`))) return;
+  if (btn) setLoading(btn, true);
   const res = await api(`/produk/${id}`, { method:'DELETE' });
+  if (btn) setLoading(btn, false);
   if (res?.success) { toast('Produk dinonaktifkan.', 'info'); loadProduk(curPage); }
   else toast(res?.message||'Gagal.', 'error');
 }
@@ -283,6 +292,11 @@ async function hapusProduk(id, nama) {
 const dSearch = debounce(()=>loadProduk(1), 320);
 document.getElementById('s-search').addEventListener('input', dSearch);
 document.getElementById('s-kat').addEventListener('change', ()=>loadProduk(1));
+document.getElementById('produk-tbody').addEventListener('click', e => {
+  const btn = e.target.closest('[data-delete-produk]');
+  if (!btn) return;
+  hapusProduk(parseInt(btn.dataset.deleteProduk, 10), btn.dataset.produkNama || 'produk ini', btn);
+});
 
 loadKat(); loadProduk();
 </script>

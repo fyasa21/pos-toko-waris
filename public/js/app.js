@@ -152,6 +152,7 @@ function toast(msg, type = 'success') {
  const el = document.createElement('div');
  el.className = `toast ${type}`;
 el.innerHTML = `<div class="toast-icon">${icons[type] || icons.info}</div><span>${msg}</span>`;
+ stack.appendChild(el);
  setTimeout(() => {
  el.classList.add('out');
  setTimeout(() => el.remove(), 220);
